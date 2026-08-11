@@ -1,0 +1,35 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'learning_view.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    const ProviderScope(
+      child: LeitnerApp(),
+    ),
+  );
+}
+
+class LeitnerApp extends StatelessWidget {
+  const LeitnerApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'WortSchatz',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: Brightness.light),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
+      home: const LearningView(),
+    );
+  }
+}

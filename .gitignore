@@ -1,45 +1,46 @@
-# Miscellaneous
+# ==========================================
+# Android Studio & Gradle - Official .gitignore
+# ==========================================
+
+# Built application files / Binaries
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
 *.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
 
-# IntelliJ related
+# Build and Cache Directories (Niemals einchecken!)
+build/
+app/build/
+.gradle/
+bin/
+gen/
+out/
+
+# Local configuration (Enthält deinen privaten SDK-Pfad)
+local.properties
+
+# Android Studio / IntelliJ IDE-spezifische Dateien
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/deploymentTargetSelector.xml
 *.iml
-*.ipr
 *.iws
-.idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Log-Dateien
+*.log
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+# Betriebssystem-Dateien
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# IMPORTANT EXCEPTION:
+# Stelle sicher, dass die Wrapper-JAR trotz eventueller globaler Rules NICHT ignoriert wird!
+!gradle/wrapper/gradle-wrapper.jar

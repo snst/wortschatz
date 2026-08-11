@@ -1,46 +1,81 @@
 # ==========================================
-# Android Studio & Gradle - Official .gitignore
+# 1. FLUTTER & DART (Hauptverzeichnis)
 # ==========================================
-
-# Built application files / Binaries
-*.apk
-*.aar
-*.ap_
-*.aab
-*.dex
-*.class
-
-# Build and Cache Directories (Niemals einchecken!)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
 build/
-app/build/
-.gradle/
-bin/
-gen/
-out/
 
-# Local configuration (Enthält deinen privaten SDK-Pfad)
-local.properties
+# Erzeugte Web- / Linux-Build-Dateien
+/doc/api/
+/ephemeral/
 
-# Android Studio / IntelliJ IDE-spezifische Dateien
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
-.idea/caches/
-.idea/libraries/
-.idea/modules.xml
-.idea/deploymentTargetSelector.xml
+# Symbolische Links
+/ios/Flutter/App.framework
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+
+# ==========================================
+# 2. ANDROID PLATFORM (./android)
+# ==========================================
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Android Studio / IntelliJ
+android/.idea/workspace.xml
+android/.idea/tasks.xml
+android/.idea/caches/
+android/.idea/modules.xml
+android/.idea/deploymentTargetSelector.xml
+android/*.iml
+
+# WICHTIG: Gradle-Wrapper explizit SCHÜTZEN!
+!android/gradle/wrapper/gradle-wrapper.jar
+!android/gradlew
+!android/gradlew.bat
+
+# ==========================================
+# 3. LINUX PLATFORM (./linux)
+# ==========================================
+linux/flutter/ephemeral/
+linux/build/
+linux/cmake-build-*/
+
+# ==========================================
+# 4. WEB PLATFORM (./web)
+# ==========================================
+# In der Regel bleibt web/ vollständig in Git.
+# Ausnahmen nur, falls du lokale Test-Builds im Web-Ordner ablegst:
+web/icons/Manifest/
+
+# ==========================================
+# 5. IDEs & EDITORS (Allgemein)
+# ==========================================
+.idea/
 *.iml
 *.iws
+*.ipr
 
-# Log-Dateien
-*.log
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
-# Betriebssystem-Dateien
+# ==========================================
+# 6. BETRIEBSSYSTEM-DATEIEN
+# ==========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 desktop.ini
-
-# IMPORTANT EXCEPTION:
-# Stelle sicher, dass die Wrapper-JAR trotz eventueller globaler Rules NICHT ignoriert wird!
-!gradle/wrapper/gradle-wrapper.jar

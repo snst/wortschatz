@@ -44,7 +44,7 @@ class DatabaseService {
 
       _notifyBuffer();
     } catch (e, stackTrace) {
-      print("Error fetching cards: $e");
+      //print("Error fetching cards: $e");
       if (!_reviewableCardsController.isClosed) {
         _reviewableCardsController.addError(e, stackTrace);
       }
@@ -72,7 +72,7 @@ class DatabaseService {
 
       _notifyBuffer();
     } catch (e, stackTrace) {
-      print("Error fetching new cards: $e");
+      //print("Error fetching new cards: $e");
       if (!_reviewableCardsController.isClosed) {
         _reviewableCardsController.addError(e, stackTrace);
       }

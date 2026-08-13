@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 import 'card_dialog.dart';
-import 'database_service.dart';
 import 'flashcard.dart';
 import 'learning_controller.dart';
 import 'manage_view.dart';

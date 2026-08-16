@@ -15,13 +15,13 @@ void main() async {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: const LeitnerApp(),
+      child: const WortSchatzApp(),
     ),
   );
 }
 
-class LeitnerApp extends StatelessWidget {
-  const LeitnerApp({super.key});
+class WortSchatzApp extends StatelessWidget {
+  const WortSchatzApp({super.key});
 
   @override
   Widget build(BuildContext context) {

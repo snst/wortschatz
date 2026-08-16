@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:translator/translator.dart';
 import '../../core/models/flashcard.dart';
 import '../../core/providers/service_providers.dart';
+import '../settings/settings_notifier.dart';
 
 /// Shows a full-screen editor to add or edit a flashcard.
 void showCardDialog(BuildContext context, {Flashcard? card}) {
@@ -31,8 +32,6 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
   late TextEditingController _backController;
   late TextEditingController _noteController;
   bool _isLoading = false;
-  String langFront_ = '';
-  String langBack_ = '';
   bool _learnCard = false;
 
   @override
@@ -42,24 +41,6 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
     _backController = TextEditingController(text: widget.card?.back ?? '');
     _noteController = TextEditingController(text: widget.card?.note ?? '');
     _learnCard = (widget.card?.priority ?? 1) > 0;
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final settingsService = ref.read(settingsServiceProvider);
-    String front = await settingsService.getLanguageFront();
-    String back = await settingsService.getLanguageBack();
-
-    // Normalize language codes (e.g., 'es-ES' -> 'es')
-    if (front.length > 2) front = front.substring(0, 2);
-    if (back.length > 2) back = back.substring(0, 2);
-
-    if (mounted) {
-      setState(() {
-        langFront_ = front;
-        langBack_ = back;
-      });
-    }
   }
 
   @override
@@ -70,14 +51,14 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
     super.dispose();
   }
 
-  Future<void> _translate(bool fromFront) async {
+  Future<void> _translate(bool fromFront, String langFront, String langBack) async {
     final input = fromFront ? _frontController.text : _backController.text;
     if (input.trim().isEmpty) return;
 
     setState(() => _isLoading = true);
     try {
-      final from = fromFront ? langFront_ : langBack_;
-      final to = fromFront ? langBack_ : langFront_;
+      final from = fromFront ? langFront : langBack;
+      final to = fromFront ? langBack : langFront;
 
       final translator = GoogleTranslator();
       final translation = await translator.translate(input, from: from, to: to);
@@ -174,6 +155,14 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    String langFront = settings.langFront;
+    String langBack = settings.langBack;
+
+    // Normalize for translation
+    final transFront = langFront.length > 2 ? langFront.substring(0, 2) : langFront;
+    final transBack = langBack.length > 2 ? langBack.substring(0, 2) : langBack;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.card == null ? 'Add Card' : 'Edit Card #${widget.card!.id}'),
@@ -194,16 +183,16 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
           children: [
             _buildInputSection(
               controller: _frontController,
-              label: langFront_.isEmpty ? 'Front' : langFront_,
-              translateTo: langBack_,
-              onTranslate: () => _translate(true),
+              label: langFront,
+              translateTo: langBack,
+              onTranslate: () => _translate(true, transFront, transBack),
             ),
             const SizedBox(height: 4),
             _buildInputSection(
               controller: _backController,
-              label: langBack_.isEmpty ? 'Back' : langBack_,
-              translateTo: langFront_,
-              onTranslate: () => _translate(false),
+              label: langBack,
+              translateTo: langFront,
+              onTranslate: () => _translate(false, transFront, transBack),
             ),
             const SizedBox(height: 4),
             _buildInputSection(

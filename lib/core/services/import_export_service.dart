@@ -10,25 +10,36 @@ class ImportExportService {
 
   ImportExportService(this._db);
 
-  Future<int> importFromFile({
-    required bool importPriority,
-    required bool importLearning,
-    required bool useExistingIds,
-  }) async {
+  Future<List<dynamic>?> pickAndParseJson() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
 
-    if (result == null || result.files.single.path == null) return 0;
+    if (result == null || result.files.single.path == null) return null;
 
-    final file = File(result.files.single.path!);
-    final String content = await file.readAsString();
-    final List<dynamic> jsonList = jsonDecode(content);
+    try {
+      final file = File(result.files.single.path!);
+      final String content = await file.readAsString();
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        return decoded;
+      }
+    } catch (e) {
+      // Log or handle error
+    }
+    return null;
+  }
 
+  Future<int> importCards(
+    List<dynamic> rawData, {
+    required bool importPriority,
+    required bool importLearning,
+    required bool useExistingIds,
+  }) async {
     final List<Flashcard> cardsToImport = [];
 
-    for (var item in jsonList) {
+    for (var item in rawData) {
       if (item is Map<String, dynamic>) {
         Map<String, dynamic> filteredItem = Map.from(item);
         if (!importPriority) filteredItem.remove('priority');

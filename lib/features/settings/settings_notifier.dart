@@ -1,51 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/models/app_settings.dart';
 import '../../core/providers/service_providers.dart';
 
-final settingsProvider = AsyncNotifierProvider<SettingsNotifier, Map<String, dynamic>>(() {
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(() {
   return SettingsNotifier();
 });
 
-class SettingsNotifier extends AsyncNotifier<Map<String, dynamic>> {
+class SettingsNotifier extends Notifier<AppSettings> {
   @override
-  Future<Map<String, dynamic>> build() async {
-    final service = ref.watch(settingsServiceProvider);
-    return {
-      'frontFirst': await service.getFrontFirst(),
-      'readFront': await service.getReadFront(),
-      'readBack': await service.getReadBack(),
-      'langFront': await service.getLanguageFront(),
-      'langBack': await service.getLanguageBack(),
-      'speechRate': await service.getSpeechRate(),
-    };
+  AppSettings build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    return AppSettings.fromPrefs(prefs);
   }
 
-  Future<void> setFrontFirst(bool value) async {
-    await ref.read(settingsServiceProvider).setFrontFirst(value);
-    ref.invalidateSelf();
+  void _update(AppSettings newSettings) {
+    state = newSettings;
+    state.save(ref.read(sharedPreferencesProvider));
   }
 
-  Future<void> setReadFront(bool value) async {
-    await ref.read(settingsServiceProvider).setReadFront(value);
-    ref.invalidateSelf();
-  }
-
-  Future<void> setReadBack(bool value) async {
-    await ref.read(settingsServiceProvider).setReadBack(value);
-    ref.invalidateSelf();
-  }
-
-  Future<void> setLanguageFront(String value) async {
-    await ref.read(settingsServiceProvider).setLanguageFront(value);
-    ref.invalidateSelf();
-  }
-
-  Future<void> setLanguageBack(String value) async {
-    await ref.read(settingsServiceProvider).setLanguageBack(value);
-    ref.invalidateSelf();
-  }
-
-  Future<void> setSpeechRate(double value) async {
-    await ref.read(settingsServiceProvider).setSpeechRate(value);
-    ref.invalidateSelf();
-  }
+  set frontFirst(bool val) => _update(state.copyWith(frontIsQuestion: val));
+  set readAnswer(bool val) => _update(state.copyWith(readAnswer: val));
+  set langFront(String val) => _update(state.copyWith(langFront: val));
+  set langBack(String val) => _update(state.copyWith(langBack: val));
+  set speechRate(double val) => _update(state.copyWith(speechRate: val));
+  set speechRateSlow(double val) => _update(state.copyWith(speechRateSlow: val));
 }

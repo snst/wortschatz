@@ -23,10 +23,15 @@ class _ManageViewState extends ConsumerState<ManageView> {
   }
 
   Future<void> _importFromFile() async {
-    final options = await _showImportOptionsDialog();
+    final rawData = await ref.read(importExportServiceProvider).pickAndParseJson();
+    if (rawData == null || rawData.isEmpty) return;
+
+    if (!mounted) return;
+    final options = await _showImportOptionsDialog(rawData.length);
     if (options == null) return;
 
-    final count = await ref.read(importExportServiceProvider).importFromFile(
+    final count = await ref.read(importExportServiceProvider).importCards(
+          rawData,
           importPriority: options['priority'] ?? true,
           importLearning: options['learning'] ?? true,
           useExistingIds: options['keepIds'] ?? false,
@@ -37,7 +42,7 @@ class _ManageViewState extends ConsumerState<ManageView> {
     }
   }
 
-  Future<Map<String, bool>?> _showImportOptionsDialog() async {
+  Future<Map<String, bool>?> _showImportOptionsDialog(int cardCount) async {
     bool importPriority = true;
     bool importLearning = true;
     bool keepIds = false;
@@ -50,6 +55,8 @@ class _ManageViewState extends ConsumerState<ManageView> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text('Found $cardCount cards in the file.'),
+              const SizedBox(height: 8),
               const Text('Select which data to import besides Front, Back and Note:'),
               const SizedBox(height: 16),
               CheckboxListTile(
@@ -101,98 +108,100 @@ class _ManageViewState extends ConsumerState<ManageView> {
     final state = ref.watch(manageCardsNotifierProvider);
     final notifier = ref.read(manageCardsNotifierProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Cards'),
-        actions: [
-          IconButton(
-            icon: Icon(state.ascending ? Icons.arrow_upward : Icons.arrow_downward),
-            onPressed: () => notifier.toggleAscending(),
-            tooltip: 'Toggle Sort Order',
-          ),
-          PopupMenuButton<SortAttribute>(
-            icon: const Icon(Icons.sort),
-            onSelected: (attribute) => notifier.setSortAttribute(attribute),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: SortAttribute.id, child: Text('Sort by ID')),
-              const PopupMenuItem(value: SortAttribute.priority, child: Text('Sort by Priority')),
-              const PopupMenuItem(value: SortAttribute.reviewCount, child: Text('Sort by Review Count')),
-              const PopupMenuItem(value: SortAttribute.stability, child: Text('Sort by Stability')),
-              const PopupMenuItem(value: SortAttribute.difficulty, child: Text('Sort by Difficulty')),
-              const PopupMenuItem(value: SortAttribute.nextReview, child: Text('Sort by Next Review')),
-              const PopupMenuItem(value: SortAttribute.lastReview, child: Text('Sort by Last Review')),
-            ],
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'import_json') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ImportView()));
-              } else if (value == 'import_file') {
-                _importFromFile();
-              } else if (value == 'export_file') {
-                _exportToFile();
-              } else if (value == 'reset_progress') {
-                _showConfirmation(context, 'Reset Progress?', 'Really reset progress of all cards?', () => db.resetLearningProgress(), Colors.red);
-              } else if (value == 'delete_database') {
-                _showConfirmation(context, 'Delete Database?', 'Really delete all cards?', () => db.deleteAllCards(), Colors.red);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'import_json', child: ListTile(leading: Icon(Icons.download), title: Text('Import JSON'))),
-              const PopupMenuItem(value: 'import_file', child: ListTile(leading: Icon(Icons.file_open), title: Text('Import File'))),
-              const PopupMenuItem(value: 'export_file', child: ListTile(leading: Icon(Icons.upload), title: Text('Export File'))),
-              const PopupMenuItem(value: 'reset_progress', child: ListTile(leading: Icon(Icons.restart_alt), title: Text('Reset Progress'))),
-              const PopupMenuItem(value: 'delete_database', child: ListTile(leading: Icon(Icons.delete_forever), title: Text('Delete Database'))),
-            ],
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(onPressed: () => showCardDialog(context), child: const Icon(Icons.add)),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _filterController,
-              decoration: InputDecoration(
-                hintText: 'Search cards...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () { _filterController.clear(); notifier.setQuery(''); }),
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (value) => notifier.setQuery(value),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<List<Flashcard>>(
-              stream: allCardsStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final cards = notifier.filterAndSort(snapshot.data!);
+    return StreamBuilder<List<Flashcard>>(
+      stream: allCardsStream,
+      builder: (context, snapshot) {
+        final allCards = snapshot.data ?? [];
+        final filteredCards = notifier.filterAndSort(allCards);
 
-                return ListView.builder(
-                  itemCount: cards.length,
-                  itemBuilder: (context, index) {
-                    final card = cards[index];
-                    return ListTile(
-                      title: Text(card.front),
-                      subtitle: Text(card.back),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('${card.id}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
-                          Checkbox(value: card.priority > 0, onChanged: (val) => db.updateCardSelectForLearning(card.id, val!)),
-                        ],
-                      ),
-                      onTap: () => showCardDialog(context, card: card),
-                    );
-                  },
-                );
-              },
-            ),
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Manage Cards (${allCards.length})'),
+            actions: [
+              IconButton(
+                icon: Icon(state.ascending ? Icons.arrow_upward : Icons.arrow_downward),
+                onPressed: () => notifier.toggleAscending(),
+                tooltip: 'Toggle Sort Order',
+              ),
+              PopupMenuButton<SortAttribute>(
+                icon: const Icon(Icons.sort),
+                onSelected: (attribute) => notifier.setSortAttribute(attribute),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: SortAttribute.id, child: Text('Sort by ID')),
+                  const PopupMenuItem(value: SortAttribute.priority, child: Text('Sort by Priority')),
+                  const PopupMenuItem(value: SortAttribute.reviewCount, child: Text('Sort by Review Count')),
+                  const PopupMenuItem(value: SortAttribute.stability, child: Text('Sort by Stability')),
+                  const PopupMenuItem(value: SortAttribute.difficulty, child: Text('Sort by Difficulty')),
+                  const PopupMenuItem(value: SortAttribute.nextReview, child: Text('Sort by Next Review')),
+                  const PopupMenuItem(value: SortAttribute.lastReview, child: Text('Sort by Last Review')),
+                ],
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'import_json') {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ImportView()));
+                  } else if (value == 'import_file') {
+                    _importFromFile();
+                  } else if (value == 'export_file') {
+                    _exportToFile();
+                  } else if (value == 'reset_progress') {
+                    _showConfirmation(context, 'Reset Progress?', 'Really reset progress of all cards?', () => db.resetLearningProgress(), Colors.red);
+                  } else if (value == 'delete_database') {
+                    _showConfirmation(context, 'Delete Database?', 'Really delete all cards?', () => db.deleteAllCards(), Colors.red);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'import_json', child: ListTile(leading: Icon(Icons.download), title: Text('Import JSON'))),
+                  const PopupMenuItem(value: 'import_file', child: ListTile(leading: Icon(Icons.file_open), title: Text('Import File'))),
+                  const PopupMenuItem(value: 'export_file', child: ListTile(leading: Icon(Icons.upload), title: Text('Export File'))),
+                  const PopupMenuItem(value: 'reset_progress', child: ListTile(leading: Icon(Icons.restart_alt), title: Text('Reset Progress'))),
+                  const PopupMenuItem(value: 'delete_database', child: ListTile(leading: Icon(Icons.delete_forever), title: Text('Delete Database'))),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+          floatingActionButton: FloatingActionButton(onPressed: () => showCardDialog(context), child: const Icon(Icons.add)),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: _filterController,
+                  decoration: InputDecoration(
+                    hintText: 'Search cards...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () { _filterController.clear(); notifier.setQuery(''); }),
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => notifier.setQuery(value),
+                ),
+              ),
+              Expanded(
+                child: snapshot.hasData
+                    ? ListView.builder(
+                        itemCount: filteredCards.length,
+                        itemBuilder: (context, index) {
+                          final card = filteredCards[index];
+                          return ListTile(
+                            title: Text(card.front),
+                            subtitle: Text(card.back),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('${card.id}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                                Checkbox(value: card.priority > 0, onChanged: (val) => db.updateCardSelectForLearning(card.id, val!)),
+                              ],
+                            ),
+                            onTap: () => showCardDialog(context, card: card),
+                          );
+                        },
+                      )
+                    : const Center(child: CircularProgressIndicator()),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

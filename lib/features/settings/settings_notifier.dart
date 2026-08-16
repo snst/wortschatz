@@ -1,23 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'database_service.dart';
-import 'settings_service.dart';
-import 'learning_controller.dart';
-import 'flashcard.dart';
+import '../../core/providers/service_providers.dart';
 
-// Service Providers
-final databaseServiceProvider = Provider<DatabaseService>((ref) {
-  return DatabaseService();
-});
-
-final settingsServiceProvider = Provider<SettingsService>((ref) {
-  return SettingsService();
-});
-
-final learningControllerProvider = Provider<LearningController>((ref) {
-  return LearningController();
-});
-
-// Settings Providers
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, Map<String, dynamic>>(() {
   return SettingsNotifier();
 });
@@ -66,8 +49,3 @@ class SettingsNotifier extends AsyncNotifier<Map<String, dynamic>> {
     ref.invalidateSelf();
   }
 }
-
-// Learning Session Provider
-final reviewableCardsProvider = StreamProvider<List<Flashcard>>((ref) {
-  return ref.watch(databaseServiceProvider).reviewableCards;
-});

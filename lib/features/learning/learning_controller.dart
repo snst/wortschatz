@@ -1,6 +1,5 @@
 import 'dart:math';
-
-import 'flashcard.dart';
+import '../../core/models/flashcard.dart';
 
 enum Rating { again, hard, good, easy }
 
@@ -8,41 +7,42 @@ class LearningController {
   final double desiredRetention = 0.90;
   final double decay = -0.5;
 
-  void answer(Flashcard card, Rating rating) {
+  Flashcard answer(Flashcard card, Rating rating) {
     final now = DateTime.now();
     final daysElapsed = max(0, now.difference(card.lastReview).inDays);
 
-    card.stability = max(1.0, card.stability);
-    final retrievability = _calculateRetrievability(card.stability, daysElapsed);
+    double stability = max(1.0, card.stability);
+    final retrievability = _calculateRetrievability(stability, daysElapsed);
 
-    card.difficulty = _updateDifficulty(card.difficulty, rating);
+    double difficulty = _updateDifficulty(card.difficulty, rating);
 
+    int reviewCount = card.reviewCount;
     if (rating == Rating.again) {
-      card.reviewCount = 0;
+      reviewCount = 0;
     }
 
-    card.stability = _nextStability(card.stability, card.difficulty, retrievability, rating);
-
-    card.reviewCount++;
-    card.lastReview = now;
-
-    if (card.reviewCount == 1) {
-      card.nextReview = now.add(const Duration(minutes: 10));
-      return;
+    stability = _nextStability(stability, difficulty, retrievability, rating);
+    reviewCount++;
+    
+    DateTime nextReview;
+    if (reviewCount == 1) {
+      nextReview = now.add(const Duration(minutes: 10));
+    } else if (reviewCount == 2) {
+      nextReview = now.add(const Duration(days: 1));
+    } else if (reviewCount == 3) {
+      nextReview = now.add(const Duration(days: 3));
+    } else {
+      final interval = _calculateNextInterval(stability);
+      nextReview = now.add(Duration(days: interval));
     }
 
-    if (card.reviewCount == 2) {
-      card.nextReview = now.add(const Duration(days: 1));
-      return;
-    }
-
-    if (card.reviewCount == 3) {
-      card.nextReview = now.add(const Duration(days: 3));
-      return;
-    }
-
-    final interval = calculateNextInterval(card);
-    card.nextReview = now.add(Duration(days: interval));
+    return card.copyWith(
+      stability: stability,
+      difficulty: difficulty,
+      reviewCount: reviewCount,
+      lastReview: now,
+      nextReview: nextReview,
+    );
   }
 
   double _calculateRetrievability(double stability, int daysElapsed) {
@@ -79,8 +79,8 @@ class LearningController {
     return stability * growth;
   }
 
-  int calculateNextInterval(Flashcard card) {
-    final interval = card.stability * (pow(desiredRetention, 1 / decay) - 1) / exp(decay);
+  int _calculateNextInterval(double stability) {
+    final interval = stability * (pow(desiredRetention, 1 / decay) - 1) / exp(decay);
     return interval.round().clamp(1, 36500);
   }
 }

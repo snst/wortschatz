@@ -2,20 +2,20 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'database_service.dart';
-import 'flashcard.dart';
+import '../../core/models/flashcard.dart';
+import '../../core/providers/service_providers.dart';
 
-class ImportView extends StatefulWidget {
+class ImportView extends ConsumerStatefulWidget {
   const ImportView({super.key});
 
   @override
-  State<ImportView> createState() => _ImportViewState();
+  ConsumerState<ImportView> createState() => _ImportViewState();
 }
 
-class _ImportViewState extends State<ImportView> {
+class _ImportViewState extends ConsumerState<ImportView> {
   final TextEditingController _controller = TextEditingController();
-  final DatabaseService _db = DatabaseService();
   bool _isImporting = false;
 
   Future<void> _importCards() async {
@@ -42,7 +42,7 @@ class _ImportViewState extends State<ImportView> {
       }
 
       if (cardsToImport.isNotEmpty) {
-        await _db.addCards(cardsToImport);
+        await ref.read(databaseServiceProvider).addCards(cardsToImport);
         if (mounted) {
           ScaffoldMessenger.of(
             context,

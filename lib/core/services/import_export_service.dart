@@ -1,0 +1,77 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
+import '../models/flashcard.dart';
+import 'database_service.dart';
+
+class ImportExportService {
+  final DatabaseService _db;
+
+  ImportExportService(this._db);
+
+  Future<int> importFromFile({
+    required bool importPriority,
+    required bool importLearning,
+    required bool useExistingIds,
+  }) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+
+    if (result == null || result.files.single.path == null) return 0;
+
+    final file = File(result.files.single.path!);
+    final String content = await file.readAsString();
+    final List<dynamic> jsonList = jsonDecode(content);
+
+    final List<Flashcard> cardsToImport = [];
+
+    for (var item in jsonList) {
+      if (item is Map<String, dynamic>) {
+        Map<String, dynamic> filteredItem = Map.from(item);
+        if (!importPriority) filteredItem.remove('priority');
+        if (!importLearning) {
+          filteredItem.remove('nextReview');
+          filteredItem.remove('lastReview');
+          filteredItem.remove('stability');
+          filteredItem.remove('difficulty');
+          filteredItem.remove('reviewCount');
+        }
+        if (!useExistingIds) filteredItem.remove('id');
+
+        final card = Flashcard.fromJson(filteredItem);
+        if (card.front.isNotEmpty && card.back.isNotEmpty) {
+          cardsToImport.add(card);
+        }
+      }
+    }
+
+    if (cardsToImport.isNotEmpty) {
+      await _db.addCards(cardsToImport, useExistingIds: useExistingIds);
+    }
+    return cardsToImport.length;
+  }
+
+  Future<String?> exportToFile() async {
+    final cards = await _db.allCards.first;
+    final List<Map<String, dynamic>> jsonList = cards.map((card) => card.toJson()).toList();
+    
+    final String content = const JsonEncoder.withIndent('  ').convert(jsonList);
+    final String timestamp = DateFormat('ddMMyyyy_HHmm').format(DateTime.now());
+    final String fileName = 'ws_$timestamp.json';
+
+    final String? outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Please select where to save the cards:',
+      fileName: fileName,
+    );
+
+    if (outputPath != null) {
+      final file = File(outputPath);
+      await file.writeAsString(content);
+      return outputPath;
+    }
+    return null;
+  }
+}

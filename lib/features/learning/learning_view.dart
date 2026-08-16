@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 
-import 'card_dialog.dart';
-import 'flashcard.dart';
+import '../../core/models/flashcard.dart';
+import '../../core/providers/service_providers.dart';
+import '../cards/card_dialog.dart';
+import '../cards/manage_view.dart';
+import '../settings/settings_notifier.dart';
+import '../settings/settings_view.dart';
 import 'learning_controller.dart';
-import 'manage_view.dart';
-import 'providers.dart';
-import 'settings_view.dart';
+import 'learning_notifier.dart';
+import 'widgets/rating_button.dart';
+import 'widgets/stat_bar.dart';
 
 class LearningView extends ConsumerStatefulWidget {
   const LearningView({super.key});
@@ -17,15 +20,7 @@ class LearningView extends ConsumerStatefulWidget {
 }
 
 class _LearningViewState extends ConsumerState<LearningView> {
-  final FlutterTts _tts = FlutterTts();
   bool _showBack = false;
-
-  // Funktion zum Vorlesen
-  Future<void> _speak(String text, String language, double speechRate) async {
-    await _tts.setLanguage(language);
-    await _tts.setSpeechRate(speechRate);
-    await _tts.speak(text);
-  }
 
   void _readAloudIfNeeded(Flashcard card, Map<String, dynamic> settings) async {
     final frontFirst = settings['frontFirst'] as bool;
@@ -35,63 +30,64 @@ class _LearningViewState extends ConsumerState<LearningView> {
     final langBack = settings['langBack'] as String;
     final speechRate = settings['speechRate'] as double;
 
+    final tts = ref.read(ttsServiceProvider);
+
     if (readBack) {
-      await _speak(frontFirst ? card.front : card.back, frontFirst ? langFront : langBack, speechRate);
+      await tts.speak(frontFirst ? card.front : card.back, frontFirst ? langFront : langBack, speechRate);
     }
     if (readFront) {
-      await _speak(frontFirst ? card.back : card.front, frontFirst ? langBack : langFront, speechRate);
+      await tts.speak(frontFirst ? card.back : card.front, frontFirst ? langBack : langFront, speechRate);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final cardsAsync = ref.watch(reviewableCardsProvider);
+    final learningState = ref.watch(learningNotifierProvider);
     final settingsAsync = ref.watch(settingsProvider);
 
-    return cardsAsync.when(
+    if (learningState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return settingsAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
-      data: (cards) {
-        return settingsAsync.when(
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
-          data: (settings) {
-            if (cards.isEmpty) {
-              return _buildEmptyState(context);
-            }
+      data: (settings) {
+        final cards = learningState.sessionCards;
+        if (cards.isEmpty) {
+          return _buildEmptyState(context);
+        }
 
-            final currentCard = cards.first;
-            final frontFirst = settings['frontFirst'] as bool;
-            final String displayFront = frontFirst ? currentCard.front : currentCard.back;
-            final String displayBack = frontFirst ? currentCard.back : currentCard.front;
+        final currentCard = cards.first;
+        final frontFirst = settings['frontFirst'] as bool;
+        final String displayFront = frontFirst ? currentCard.front : currentCard.back;
+        final String displayBack = frontFirst ? currentCard.back : currentCard.front;
 
-            return Scaffold(
-              appBar: AppBar(
-                leading: Center(
-                    child: Text('${cards.length}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo))),
-                title: _buildAppBarStats(currentCard),
-                actions: [_buildMenuButton(context, currentCard)],
-              ),
-              body: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  setState(() => _showBack = !_showBack);
-                  if (_showBack) {
-                    _readAloudIfNeeded(currentCard, settings);
-                  }
-                },
-                child: Column(
-                  children: [
-                    Expanded(child: _buildCardSide(displayFront, currentCard.note, true, settings)),
-                    const Divider(thickness: 1, indent: 48, endIndent: 48),
-                    Expanded(child: _buildCardSide(displayBack, '', false, settings)),
-                    _buildBottomButtons(currentCard),
-                  ],
-                ),
-              ),
-            );
-          },
+        return Scaffold(
+          appBar: AppBar(
+            leading: Center(
+                child: Text('${cards.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.indigo))),
+            title: _buildAppBarStats(currentCard),
+            actions: [_buildMenuButton(context, currentCard)],
+          ),
+          body: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              setState(() => _showBack = !_showBack);
+              if (_showBack) {
+                _readAloudIfNeeded(currentCard, settings);
+              }
+            },
+            child: Column(
+              children: [
+                Expanded(child: _buildCardSide(displayFront, currentCard.note, true, settings)),
+                const Divider(thickness: 1, indent: 48, endIndent: 48),
+                Expanded(child: _buildCardSide(displayBack, '', false, settings)),
+                _buildBottomButtons(currentCard),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -112,7 +108,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
             const Text('No more cards!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => ref.read(databaseServiceProvider).fetchNewCards(),
+              onPressed: () => ref.read(learningNotifierProvider.notifier).fetchNewCards(),
               icon: const Icon(Icons.refresh),
               label: const Text('Continue with new cards.'),
             ),
@@ -124,9 +120,9 @@ class _LearningViewState extends ConsumerState<LearningView> {
 
   Widget _buildAppBarStats(Flashcard currentCard) {
     return Row(children: [
-      Expanded(child: _buildStatBar('Difficulty', currentCard.difficulty, Colors.orange)),
+      Expanded(child: StatBar(label: 'Difficulty', value: currentCard.difficulty, color: Colors.orange)),
       const SizedBox(width: 12),
-      Expanded(child: _buildStatBar('Stability', currentCard.stability, Colors.blue)),
+      Expanded(child: StatBar(label: 'Stability', value: currentCard.stability, color: Colors.blue)),
       const SizedBox(width: 12),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Prio: ${currentCard.priority}', style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold)),
@@ -165,7 +161,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
                 ),
                 IconButton(
                   icon: Icon(Icons.volume_up, color: isFront ? Colors.indigo : Colors.green),
-                  onPressed: () => _speak(text, currentLang, speechRate),
+                  onPressed: () => ref.read(ttsServiceProvider).speak(text, currentLang, speechRate),
                 ),
               ],
             ),
@@ -188,10 +184,22 @@ class _LearningViewState extends ConsumerState<LearningView> {
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildRatedButton(currentCard, Rating.again, 'Again', Colors.red),
-                  _buildRatedButton(currentCard, Rating.hard, 'Hard', Colors.orange),
-                  _buildRatedButton(currentCard, Rating.good, 'Good', Colors.green),
-                  _buildRatedButton(currentCard, Rating.easy, 'Easy', Colors.blue),
+                  RatingButton(
+                      label: 'Again',
+                      color: Colors.red,
+                      onPressed: () => _answer(currentCard, Rating.again)),
+                  RatingButton(
+                      label: 'Hard',
+                      color: Colors.orange,
+                      onPressed: () => _answer(currentCard, Rating.hard)),
+                  RatingButton(
+                      label: 'Good',
+                      color: Colors.green,
+                      onPressed: () => _answer(currentCard, Rating.good)),
+                  RatingButton(
+                      label: 'Easy',
+                      color: Colors.blue,
+                      onPressed: () => _answer(currentCard, Rating.easy)),
                 ],
               )
             : null,
@@ -199,65 +207,24 @@ class _LearningViewState extends ConsumerState<LearningView> {
     );
   }
 
-  Widget _buildStatBar(String label, double value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold)),
-            Text(value.toStringAsFixed(2), style: TextStyle(color: Colors.grey[400], fontSize: 11)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: (value.clamp(0, 10)) / 10.0,
-            backgroundColor: color.withOpacity(0.2),
-            color: color,
-            minHeight: 6,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRatedButton(Flashcard card, Rating rating, String label, Color color) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2.0),
-        child: FilledButton(
-          onPressed: () {
-            ref.read(learningControllerProvider).answer(card, rating);
-            ref.read(databaseServiceProvider).updateLearningProgress(card);
-            setState(() => _showBack = false);
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: color,
-            padding: EdgeInsets.zero,
-            minimumSize: const Size.fromHeight(60),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), textAlign: TextAlign.center),
-        ),
-      ),
-    );
+  void _answer(Flashcard card, Rating rating) {
+    ref.read(learningNotifierProvider.notifier).answer(card, rating);
+    setState(() => _showBack = false);
   }
 
   Widget _buildMenuButton(BuildContext context, Flashcard? currentCard) {
-    final db = ref.read(databaseServiceProvider);
     return PopupMenuButton<String>(
       onSelected: (value) async {
         if (value == 'refresh') {
-          await db.refreshReviewableCards();
+          ref.read(learningNotifierProvider.notifier).refresh();
           setState(() => _showBack = false);
         }
-        if (value == 'add') showCardDialog(context, db);
-        if (value == 'edit' && currentCard != null) showCardDialog(context, db, card: currentCard);
-        if (value == 'delete' && currentCard != null) {             _showBack = false;
-showDeleteConfirmation(context, db, currentCard);}
+        if (value == 'add') showCardDialog(context);
+        if (value == 'edit' && currentCard != null) showCardDialog(context, card: currentCard);
+        if (value == 'delete' && currentCard != null) {
+          _showBack = false;
+          showDeleteConfirmation(context, ref, currentCard);
+        }
         if (value == 'manage') {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageView()));
         }

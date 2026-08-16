@@ -1,16 +1,17 @@
-import 'database.dart';
+import 'package:drift/drift.dart';
+import '../database/database.dart';
 
 class Flashcard {
-  int id;
-  String front;
-  String back;
-  String note;
-  DateTime nextReview;
-  DateTime lastReview;
-  int priority;
-  double stability;
-  double difficulty;
-  int reviewCount = 0;
+  final int id;
+  final String front;
+  final String back;
+  final String note;
+  final DateTime nextReview;
+  final DateTime lastReview;
+  final int priority;
+  final double stability;
+  final double difficulty;
+  final int reviewCount;
 
   Flashcard({
     this.id = 0,
@@ -41,13 +42,40 @@ class Flashcard {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Flashcard copyWith({
+    int? id,
+    String? front,
+    String? back,
+    String? note,
+    DateTime? nextReview,
+    DateTime? lastReview,
+    int? priority,
+    double? stability,
+    double? difficulty,
+    int? reviewCount,
+  }) {
+    return Flashcard(
+      id: id ?? this.id,
+      front: front ?? this.front,
+      back: back ?? this.back,
+      note: note ?? this.note,
+      nextReview: nextReview ?? this.nextReview,
+      lastReview: lastReview ?? this.lastReview,
+      priority: priority ?? this.priority,
+      stability: stability ?? this.stability,
+      difficulty: difficulty ?? this.difficulty,
+      reviewCount: reviewCount ?? this.reviewCount,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'front': front,
       'back': back,
       'note': note,
-      'nextReview': nextReview,
-      'lastReview': lastReview,
+      'nextReview': nextReview.toIso8601String(),
+      'lastReview': lastReview.toIso8601String(),
       'priority': priority,
       'stability': stability,
       'difficulty': difficulty,

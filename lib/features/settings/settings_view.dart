@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'providers.dart';
+import 'settings_notifier.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
   const SettingsView({super.key});

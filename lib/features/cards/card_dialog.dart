@@ -1,37 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:translator/translator.dart';
-import 'package:wortschatz/database_service.dart';
-import 'package:wortschatz/flashcard.dart';
-import 'package:wortschatz/settings_service.dart';
+import '../../core/models/flashcard.dart';
+import '../../core/providers/service_providers.dart';
 
 /// Shows a full-screen editor to add or edit a flashcard.
-void showCardDialog(BuildContext context, DatabaseService db, {Flashcard? card}) {
+void showCardDialog(BuildContext context, {Flashcard? card}) {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => CardEditorPage(db: db, card: card),
+      builder: (context) => CardEditorPage(card: card),
       fullscreenDialog: true,
     ),
   );
 }
 
-class CardEditorPage extends StatefulWidget {
-  final DatabaseService db;
+class CardEditorPage extends ConsumerStatefulWidget {
   final Flashcard? card;
 
-  const CardEditorPage({super.key, required this.db, this.card});
+  const CardEditorPage({super.key, this.card});
 
   @override
-  State<CardEditorPage> createState() => _CardEditorPageState();
+  ConsumerState<CardEditorPage> createState() => _CardEditorPageState();
 }
 
-class _CardEditorPageState extends State<CardEditorPage> {
+class _CardEditorPageState extends ConsumerState<CardEditorPage> {
   late TextEditingController _frontController;
   late TextEditingController _backController;
   late TextEditingController _noteController;
-  final SettingsService _settingsService = SettingsService();
   bool _isLoading = false;
   String langFront_ = '';
   String langBack_ = '';
@@ -48,8 +46,9 @@ class _CardEditorPageState extends State<CardEditorPage> {
   }
 
   Future<void> _loadSettings() async {
-    String front = await _settingsService.getLanguageFront();
-    String back = await _settingsService.getLanguageBack();
+    final settingsService = ref.read(settingsServiceProvider);
+    String front = await settingsService.getLanguageFront();
+    String back = await settingsService.getLanguageBack();
 
     // Normalize language codes (e.g., 'es-ES' -> 'es')
     if (front.length > 2) front = front.substring(0, 2);
@@ -111,8 +110,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    String formattedDate = DateFormat('dd.MM.yyyy HH:mm').format(dateTime);
-    return formattedDate;
+    return DateFormat('dd.MM.yyyy HH:mm').format(dateTime);
   }
 
   Future<void> _save() async {
@@ -125,10 +123,17 @@ class _CardEditorPageState extends State<CardEditorPage> {
       return;
     }
 
+    final db = ref.read(databaseServiceProvider);
     if (widget.card == null) {
-      await widget.db.addCard(front, back, note, _learnCard);
+      await db.addCard(front, back, note, _learnCard);
     } else {
-      await widget.db.updateCard(widget.card!.id, front, back, note, _learnCard);
+      final updatedCard = widget.card!.copyWith(
+        front: front,
+        back: back,
+        note: note,
+        priority: _learnCard ? 1 : 0,
+      );
+      await db.updateCard(updatedCard);
     }
 
     if (mounted) Navigator.pop(context);
@@ -153,7 +158,12 @@ class _CardEditorPageState extends State<CardEditorPage> {
     );
 
     if (confirmed == true) {
-      await widget.db.updateCardResetProgress(widget.card!.id);
+      final resetCard = widget.card!.copyWith(
+        stability: 1.0,
+        difficulty: 5.0,
+        reviewCount: 0,
+      );
+      await ref.read(databaseServiceProvider).updateCard(resetCard);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Progress reset'), duration: Duration(seconds: 1)),
@@ -174,12 +184,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
                 padding: EdgeInsets.only(left: 16.0, right: 16.0),
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               ),
-            ) /*IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _save,
-            tooltip: 'Save Card',
-          ),*/
-          ,
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -191,7 +196,6 @@ class _CardEditorPageState extends State<CardEditorPage> {
               controller: _frontController,
               label: langFront_.isEmpty ? 'Front' : langFront_,
               translateTo: langBack_,
-              //hint: 'e.g. word or phrase in original language',
               onTranslate: () => _translate(true),
             ),
             const SizedBox(height: 4),
@@ -199,13 +203,13 @@ class _CardEditorPageState extends State<CardEditorPage> {
               controller: _backController,
               label: langBack_.isEmpty ? 'Back' : langBack_,
               translateTo: langFront_,
-              //hint: 'e.g. translation or definition',
               onTranslate: () => _translate(false),
             ),
             const SizedBox(height: 4),
             _buildInputSection(
-              controller: _noteController, label: 'Note', translateTo: '',
-              //hint: 'Additional information (optional)',
+              controller: _noteController,
+              label: 'Note',
+              translateTo: '',
             ),
             const SizedBox(height: 16),
             Padding(
@@ -234,9 +238,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
               ),
             ),
             if (widget.card != null) ...[
-              const SizedBox(
-                height: 16,
-              ),
+              const SizedBox(height: 16),
               Text(
                   'Reviews: ${widget.card!.reviewCount}, Stability: ${widget.card!.stability.toStringAsFixed(1)}, Difficulty: ${widget.card!.difficulty.toStringAsFixed(1)}',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
@@ -250,7 +252,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
                 if (widget.card != null)
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => showDeleteConfirmation(context, widget.db, widget.card!, onDeleted: () {
+                      onPressed: () => showDeleteConfirmation(context, ref, widget.card!, onDeleted: () {
                         if (mounted) Navigator.pop(context);
                       }),
                       icon: const Icon(Icons.delete, color: Colors.red),
@@ -321,15 +323,14 @@ class _CardEditorPageState extends State<CardEditorPage> {
               ),
           ],
         ),
-        //const SizedBox(height: 2),
         TextField(
           controller: controller,
           maxLines: null,
           minLines: 3,
           style: const TextStyle(fontSize: 18),
           decoration: InputDecoration(
-            //hintText: hint,
-            border: const OutlineInputBorder(), filled: true,
+            border: const OutlineInputBorder(),
+            filled: true,
             fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[50] : Colors.grey[900],
           ),
         ),
@@ -338,7 +339,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
   }
 }
 
-void showDeleteConfirmation(BuildContext context, DatabaseService db, Flashcard card, {VoidCallback? onDeleted}) {
+void showDeleteConfirmation(BuildContext context, WidgetRef ref, Flashcard card, {VoidCallback? onDeleted}) {
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -348,7 +349,7 @@ void showDeleteConfirmation(BuildContext context, DatabaseService db, Flashcard 
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         TextButton(
           onPressed: () async {
-            await db.deleteCard(card.id);
+            await ref.read(databaseServiceProvider).deleteCard(card.id);
             if (context.mounted) {
               Navigator.pop(context);
               if (onDeleted != null) onDeleted();

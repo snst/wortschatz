@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../models/flashcard.dart';
@@ -67,20 +68,27 @@ class ImportExportService {
 
   Future<String?> exportToFile() async {
     final cards = await _db.allCards.first;
-    final List<Map<String, dynamic>> jsonList = cards.map((card) => card.toJson()).toList();
-    
+    final List<Map<String, dynamic>> jsonList =
+        cards.map((card) => card.toJson()).toList();
+
     final String content = const JsonEncoder.withIndent('  ').convert(jsonList);
+    final Uint8List bytes = utf8.encode(content);
     final String timestamp = DateFormat('ddMMyyyy_HHmm').format(DateTime.now());
     final String fileName = 'ws_$timestamp.json';
 
     final String? outputPath = await FilePicker.platform.saveFile(
       dialogTitle: 'Please select where to save the cards:',
       fileName: fileName,
+      bytes: bytes,
     );
 
     if (outputPath != null) {
-      final file = File(outputPath);
-      await file.writeAsString(content);
+      // On Android & iOS, file_picker handles the writing via the 'bytes' parameter.
+      // On Desktop (Linux, Windows, macOS), we must write the file manually to the returned path.
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        final file = File(outputPath);
+        await file.writeAsBytes(bytes);
+      }
       return outputPath;
     }
     return null;

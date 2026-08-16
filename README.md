@@ -25,9 +25,10 @@
 ### Multi-Language Support
 - **Configurable Language Pairs**: Set source/target languages (e.g., Spanish → German) via Settings.
 - **Automatic Translation**: Built-in Google Translate integration (via `translator` package) for auto-filling translations in the editor.
-- **Text-to-Speech**: Supports speech synthesis for front and back sides with configurable:
-    - Language locales (e.g., `es-ES`, `de-DE`)
-    - Speech rate (0.1x to 1.5x)
+- **Enhanced Text-to-Speech**: Supports speech synthesis for front and back sides with:
+    - Independent locale configuration (e.g., `es-ES`, `de-DE`).
+    - **Dual Speed Support**: Standard playback rate for normal study and a toggleable **slow rate** (triggered by long-press) for better phonetic understanding.
+    - Automatic "Read Answer" toggle for hands-free learning.
 
 ### Card Management
 - **Full CRUD Operations**: Create, read, update, delete flashcards.
@@ -56,114 +57,46 @@
 
 ## 3. Architecture Overview
 
+WortSchatz follows a **Feature-Driven Architecture** combined with **Riverpod** for state management and dependency injection. The codebase is divided into `core` (shared infrastructure) and `features` (user-facing functionality).
+
 ```
-WortSchatz Application Structure
-├── Core Services (Business Logic)
-│   ├── DatabaseService      → Drift SQLite CRUD & Session management
-│   ├── LearningController   → Spaced repetition algorithm logic
-│   └── SettingsService      → SharedPreferences management
-├── Models
-│   └── Flashcard            → Data class for flashcard representation
-├── UI Views (Presentation Layer)
-│   ├── main.dart            → App entry point & theme configuration
-│   ├── LearningView         → Main learning interface (FSRS interaction)
-│   ├── ManageView           → Card management/listing
-│   ├── ImportView           → JSON bulk import interface
-│   ├── SettingsView         → User preferences
-│   └── CardEditorPage       → Add/Edit card full-screen dialog (in card_dialog.dart)
-└── Infrastructure
-    ├── database.dart        → Drift database schema definition
-    └── database_connection/ → Platform-specific database connections
+lib/
+├── core/
+│   ├── database/     → Drift SQLite schema and platform connections
+│   ├── models/       → Shared data entities (Flashcard, AppSettings)
+│   ├── providers/    → Global Riverpod providers (DB, SharedPreferences, TTS)
+│   └── services/     → Shared business logic (DatabaseService, TtsService, ImportExportService)
+├── features/
+│   ├── cards/        → Card listing, searching, and basic CRUD
+│   ├── learning/     → FSRS learning logic, session management, and UI
+│   ├── settings/     → App preferences management
+│   └── import_export/→ Bulk data operations UI
+└── main.dart         → App entry point and ProviderScope initialization
 ```
 
-### Architectural Pattern: Service-Locator + Reactive Streams
-- **Services**: Singleton-like services handle business logic (DB, Settings, Learning).
-- **Reactive Queries**: Uses Drift's `watch()` to provide real-time UI updates when the database changes.
-- **Stateful Widgets**: UI state management for local UI control (card flip, loading states).
+### Architectural Principles
+- **State Management (Riverpod)**: Uses `NotifierProvider` and `StateNotifier` to handle UI state reactively.
+- **Persistence (Drift + SQLite)**: A reactive persistence layer that provides streams of data for real-time UI updates.
+- **Logic Separation**: The spaced repetition algorithm (FSRS) is decoupled into a dedicated `LearningController` for testability and portability.
+- **Service Layer**: Asynchronous operations (TTS, File I/O, Database) are encapsulated in services provided via Riverpod.
 
 ---
 
-## 4. Core Classes & Interactions
+## 4. Core Components
 
-### 4.1 `Flashcard` (Model)
-**File**: `flashcard.dart`
+### 4.1 Data Models (`lib/core/models/`)
+- **`Flashcard`**: Represents a single vocabulary item with its memory parameters (stability, difficulty, review dates).
+- **`AppSettings`**: Immutable representation of user preferences (language, speech rate, learning direction).
 
-**Purpose**: Data class representing a single flashcard with its learning state.
+### 4.2 State Notifiers (`lib/features/`)
+- **`LearningNotifier`**: Manages the current learning session, handles card rotation, and triggers FSRS updates.
+- **`SettingsNotifier`**: Bridges `SharedPreferences` and the UI, ensuring settings changes are persisted and propagated.
 
-**Key Attributes**:
-- `id` (int): Unique database primary key.
-- `front` (String): Front side content.
-- `back` (String): Back side content.
-- `note` (String): Optional additional notes.
-- `priority` (int): 1 if included in learning, 0 if excluded.
-- `stability` (double): Memory stability (time until retrievability falls to 90%).
-- `difficulty` (double): Relative difficulty of the card (1-10).
-- `reviewCount` (int): Total number of times card has been reviewed.
-- `lastReview` (DateTime): Timestamp of the last review.
-- `nextReview` (DateTime): Next scheduled review timestamp.
-
----
-
-### 4.2 `LearningController` (Service)
-**File**: `learning_controller.dart`
-
-**Purpose**: Implements the spaced repetition algorithm (FSRS-inspired).
-
-**Key Methods**:
-```dart
-answer(card, rating)   // Calculates new stability, difficulty, and nextReview
-                       // based on the user's Rating (Again, Hard, Good, Easy)
-calculateNextInterval(card) // Determines interval in days based on stability
-```
-
-**Algorithm Details**:
-- **Retrievability**: Probability of recall based on stability and time elapsed.
-- **Difficulty Adjustment**: Updates based on rating, clamped between 1.0 and 10.0.
-- **Stability Growth**: Increases when successful, decreases (or resets) on failure.
-- **Initial Phase**: Fixed steps for first few reviews (10m, 1d, 3d).
-
----
-
-### 4.3 `DatabaseService` (Service)
-**File**: `database_service.dart`
-
-**Purpose**: Central hub for Drift operations with local buffering for performance.
-
-**Key Methods**:
-
-#### Data Streams:
-```dart
-get allCards         // Stream<List<Flashcard>> - reactive stream of all cards
-get reviewableCards  // Stream<List<Flashcard>> - buffered stream of due cards
-```
-
-#### CRUD & Batch Operations:
-```dart
-addCard(front, back, note, learnCard)  // Creates new card
-addCards(List<Flashcard>)              // Batch import via Drift batch
-updateCard(id, front, back, note, learnCard)
-deleteCard(id)
-```
-
-#### Learning Progression:
-```dart
-updateLearningProgress(card) // Updates database with new algorithm parameters
-fetchNewCards()              // Forces fetching a new batch of cards
-resetLearningProgress()      // Resets stability/difficulty for all cards
-```
-
----
-
-### 4.4 `SettingsService` (Service)
-**File**: `settings_service.dart`
-
-**Purpose**: Manages user preferences using `SharedPreferences`.
-
-**Managed Settings**:
-- Learning direction (Front→Back or Back→Front).
-- TTS enabled/disabled for each side.
-- Language locales for TTS and translation.
-- Speech rate.
+### 4.3 Core Services (`lib/core/services/`)
+- **`DatabaseService`**: Handles all Drift operations, providing reactive streams for cards and reviewable items.
+- **`LearningController`**: The functional core implementing the FSRS-inspired algorithm logic.
+- **`TtsService`**: Wraps `flutter_tts` for multi-language speech synthesis.
+- **`ImportExportService`**: Manages JSON parsing and file system interactions for bulk operations.
 
 ---
 
@@ -175,7 +108,7 @@ resetLearningProgress()      // Resets stability/difficulty for all cards
 
 #### Generate Database Code
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 #### Running the App
@@ -183,14 +116,12 @@ flutter pub run build_runner build --delete-conflicting-outputs
 flutter run
 ```
 
-#### Build Release
+#### Build & Deploy
 ```bash
 # Android
 flutter build apk --release
 
 # Web
 flutter build web --release
-
 firebase deploy --only hosting
-flutter run -d web-server
 ```

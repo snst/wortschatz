@@ -110,12 +110,13 @@ class DatabaseService {
         ));
   }
 
-  Future<void> addCards(List<Flashcard> cards) async {
+  Future<void> addCards(List<Flashcard> cards, {bool useExistingIds = false}) async {
     await _db.batch((batch) {
       for (var card in cards) {
         batch.insert(
             _db.flashcardsTable,
             FlashcardsTableCompanion.insert(
+              id: useExistingIds && card.id > 0 ? Value(card.id) : const Value.absent(),
               front: card.front,
               back: card.back,
               note: Value(card.note),
@@ -125,7 +126,8 @@ class DatabaseService {
               nextReview: Value(card.nextReview),
               lastReview: Value(card.lastReview),
               reviewCount: Value(card.reviewCount),
-            ));
+            ),
+            mode: useExistingIds ? InsertMode.insertOrReplace : InsertMode.insert);
       }
     });
     await _clearBufferAndFetch();

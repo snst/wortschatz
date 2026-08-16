@@ -166,7 +166,7 @@ class _CardEditorPageState extends State<CardEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.card == null ? 'Add Card' : 'Edit Card'),
+        title: Text(widget.card == null ? 'Add Card' : 'Edit Card #${widget.card!.id}'),
         actions: [
           if (_isLoading)
             const Center(

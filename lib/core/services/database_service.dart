@@ -12,6 +12,11 @@ class DatabaseService {
     });
   }
 
+  Future<List<Flashcard>> getAllCards() async {
+    final rows = await _db.select(_db.flashcardsTable).get();
+    return rows.map((row) => Flashcard.fromDrift(row)).toList();
+  }
+
   Stream<List<Flashcard>> get reviewableCards {
     return (_db.select(_db.flashcardsTable)
           ..where((t) => t.priority.isBiggerOrEqualValue(1))

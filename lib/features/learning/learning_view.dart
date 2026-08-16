@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/flashcard.dart';
 import '../cards/card_dialog.dart';
 import '../cards/manage_view.dart';
+import '../cards/statistics_view.dart';
+import '../../core/providers/service_providers.dart';
 import '../settings/settings_view.dart';
 import 'learning_controller.dart';
 import 'learning_notifier.dart';
@@ -247,6 +249,15 @@ class _LearningViewState extends ConsumerState<LearningView> {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const ManageView()));
         }
+        if (value == 'statistics') {
+          final allCards = await ref.read(databaseServiceProvider).getAllCards();
+          if (context.mounted) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => StatisticsView(cards: allCards)));
+          }
+        }
         if (value == 'settings') {
           Navigator.push(context,
               MaterialPageRoute(builder: (context) => const SettingsView()));
@@ -257,6 +268,10 @@ class _LearningViewState extends ConsumerState<LearningView> {
             value: 'manage',
             child: ListTile(
                 leading: Icon(Icons.list_alt), title: Text('Manage Cards'))),
+        const PopupMenuItem(
+            value: 'statistics',
+            child: ListTile(
+                leading: Icon(Icons.bar_chart), title: Text('Statistics'))),
         const PopupMenuItem(
             value: 'refresh',
             child: ListTile(

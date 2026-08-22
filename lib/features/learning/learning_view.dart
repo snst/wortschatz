@@ -44,13 +44,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: Center(
-            child: Text('${learning.sessionCards.length}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.indigo))),
-        title: _buildAppBarStats(currentCard),
+        title: _buildAppBarStats(learning.sessionCards.length, currentCard),
         actions: [_buildMenuButton(context, currentCard)],
       ),
       body: GestureDetector(
@@ -68,7 +62,6 @@ class _LearningViewState extends ConsumerState<LearningView> {
         },
         child: Column(
           children: [
-            _buildPriorityButtons(currentCard),
             Expanded(
                 child: _buildCardSide(learning, true)),
             const Divider(thickness: 1, indent: 48, endIndent: 48),
@@ -119,62 +112,80 @@ class _LearningViewState extends ConsumerState<LearningView> {
   }
 
   Widget _buildPriorityButtons(Flashcard currentCard) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline, color: Colors.orange),
-            onPressed: () => ref
-                .read(learningNotifierProvider.notifier)
-                .updatePriority(currentCard, -1),
-            tooltip: 'Decrease Priority',
-          ),
-          const Text('Adjust Priority',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.grey)),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Colors.indigo),
-            onPressed: () => ref
-                .read(learningNotifierProvider.notifier)
-                .updatePriority(currentCard, 1),
-            tooltip: 'Increase Priority',
-          ),
-        ],
-      ),
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.remove_circle_outline,
+              color: Colors.orange, size: 28),
+          onPressed: () => ref
+              .read(learningNotifierProvider.notifier)
+              .updatePriority(currentCard, -1),
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+        ),
+        Column(
+          children: [
+            const Text('Prio',
+                style: TextStyle(
+                    fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
+            SizedBox(
+              width: 32,
+              child: Text(
+                '${currentCard.priority}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline,
+              color: Colors.indigo, size: 28),
+          onPressed: () => ref
+              .read(learningNotifierProvider.notifier)
+              .updatePriority(currentCard, 1),
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+        ),
+      ],
     );
   }
 
-  Widget _buildAppBarStats(Flashcard currentCard) {
-    return Row(children: [
-      Expanded(
-          child: StatBar(
-              label: 'Difficulty',
-              value: currentCard.difficulty,
-              color: Colors.orange)),
-      const SizedBox(width: 12),
-      Expanded(
-          child: StatBar(
-              label: 'Stability',
-              value: currentCard.stability,
-              color: Colors.blue)),
-      const SizedBox(width: 12),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Priority: ${currentCard.priority}',
-            style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 11,
-                fontWeight: FontWeight.bold)),
-        Text("Reviews: ${currentCard.reviewCount}",
-            style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 11,
-                fontWeight: FontWeight.bold))
-      ]),
-    ]);
+  Widget _buildAppBarStats(int numberOfCards, Flashcard currentCard) {
+    return Row(
+      children: [
+        Text('${numberOfCards}',
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.grey)),
+        const SizedBox(width: 12),
+        _buildPriorityButtons(currentCard),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              StatBar(
+                label: 'Difficulty',
+                value: currentCard.difficulty,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 2),
+              StatBar(
+                label: 'Stability',
+                value: currentCard.stability,
+                color: Colors.blue,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCardSide(LearningState learning, bool isQuestion) {

@@ -14,26 +14,36 @@ class StatBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold)),
-            Text(value.toStringAsFixed(2), style: TextStyle(color: Colors.grey[400], fontSize: 11)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: (value.clamp(0, 10)) / 10.0,
-            backgroundColor: color.withOpacity(0.2),
-            color: color,
-            minHeight: 6,
+        SizedBox(
+          width: 60,
+          child: Text(
+            label,
+            style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 10,
+                fontWeight: FontWeight.bold),
           ),
         ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: (value.clamp(0, 10)) / 10.0,
+              backgroundColor: color.withOpacity(0.1),
+              color: color,
+              minHeight: 3,
+            ),
+          ),
+        ),
+        /*const SizedBox(width: 6),
+        Text(
+          value.toStringAsFixed(1),
+          style: TextStyle(
+              color: Colors.grey[500], fontSize: 10, fontFamily: 'monospace'),
+        ),*/
       ],
     );
   }

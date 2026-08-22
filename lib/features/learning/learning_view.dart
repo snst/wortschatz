@@ -267,11 +267,21 @@ class _LearningViewState extends ConsumerState<LearningView> {
         }
         if (value == 'add') showCardDialog(context);
         if (value == 'edit' && currentCard != null) {
-          showCardDialog(context, card: currentCard);
+          final deleted = await showCardDialog<bool>(context, card: currentCard);
+          if (deleted == true) {
+            _showAnswer = false;
+            ref
+                .read(learningNotifierProvider.notifier)
+                .removeCardFromSession(currentCard.id);
+          }
         }
         if (value == 'delete' && currentCard != null) {
           _showAnswer = false;
-          showDeleteConfirmation(context, ref, currentCard);
+          showDeleteConfirmation(context, ref, currentCard, onDeleted: () {
+            ref
+                .read(learningNotifierProvider.notifier)
+                .removeCardFromSession(currentCard.id);
+          });
         }
         if (value == 'manage') {
           Navigator.push(context,

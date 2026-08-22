@@ -102,6 +102,18 @@ class LearningNotifier extends Notifier<LearningState> {
     }
   }
 
+  Future<void> removeCardFromSession(int cardId) async {
+    final newList = List<Flashcard>.from(state.sessionCards);
+    newList.removeWhere((c) => c.id == cardId);
+
+    if (newList.isEmpty) {
+      state = state.copyWith(sessionCards: newList, isLoading: true);
+      await _fetchNextBatch();
+    } else {
+      state = state.copyWith(sessionCards: newList);
+    }
+  }
+
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true);
     await _fetchNextBatch();

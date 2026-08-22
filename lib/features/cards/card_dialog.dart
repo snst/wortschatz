@@ -8,8 +8,8 @@ import '../../core/providers/service_providers.dart';
 import '../settings/settings_notifier.dart';
 
 /// Shows a full-screen editor to add or edit a flashcard.
-void showCardDialog(BuildContext context, {Flashcard? card}) {
-  Navigator.push(
+Future<T?> showCardDialog<T>(BuildContext context, {Flashcard? card}) {
+  return Navigator.push<T>(
     context,
     MaterialPageRoute(
       builder: (context) => CardEditorPage(card: card),
@@ -242,7 +242,7 @@ class _CardEditorPageState extends ConsumerState<CardEditorPage> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => showDeleteConfirmation(context, ref, widget.card!, onDeleted: () {
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) Navigator.pop(context, true);
                       }),
                       icon: const Icon(Icons.delete, color: Colors.red),
                       label: const Text('Delete',

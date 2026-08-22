@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../../core/models/flashcard.dart';
+import '../../core/widgets/summary_item.dart';
 
 class StatisticsView extends StatelessWidget {
   final List<Flashcard> cards;
@@ -16,6 +17,8 @@ class StatisticsView extends StatelessWidget {
       );
     }
 
+    final activeCount = cards.where((c) => c.priority > 0).length;
+    final postponedCount = cards.where((c) => c.priority == 0).length;
     final learning = cards.where((c) => c.reviewCount > 0).toList();
     final avgDifficulty = learning.isEmpty ? 0.0 : learning.map((c) => c.difficulty).reduce((a, b) => a + b) / learning.length;
     final avgStability = learning.isEmpty ? 0.0 : learning.map((c) => c.stability).reduce((a, b) => a + b) / learning.length;
@@ -38,7 +41,7 @@ class StatisticsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildCompactSummary(context, cards.length, learning.length, avgStability, avgDifficulty, avgRetention),
+            _buildCompactSummary(context, cards.length, activeCount, postponedCount, avgStability, avgDifficulty, avgRetention),
             const SizedBox(height: 24),
 
             Expanded(
@@ -57,7 +60,7 @@ class StatisticsView extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactSummary(BuildContext context, int total, int learning, double stability, double difficulty, double retention) {
+  Widget _buildCompactSummary(BuildContext context, int total, int active, int postponed, double stability, double difficulty, double retention) {
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
@@ -66,22 +69,14 @@ class StatisticsView extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _summaryItem('Cards', '$total'),
-            _summaryItem('Stability', '${stability.toStringAsFixed(1)}d'),
-            _summaryItem('Difficulty', difficulty.toStringAsFixed(1)),
-            _summaryItem('Recall', '${(retention * 100).toInt()}%'),
+            SummaryItem(label: 'Active', value: '$active'),
+            SummaryItem(label: 'Postponed', value: '$postponed'),
+            SummaryItem(label: 'Stability', value: '${stability.toStringAsFixed(1)}d'),
+            SummaryItem(label: 'Difficulty', value: difficulty.toStringAsFixed(1)),
+            SummaryItem(label: 'Recall', value: '${(retention * 100).toInt()}%'),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _summaryItem(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-      ],
     );
   }
 }

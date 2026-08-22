@@ -111,6 +111,27 @@ class _LearningViewState extends ConsumerState<LearningView> {
     );
   }
 
+  Widget _buildTextWithInt(String text, int value) {
+    return Column(
+      children: [
+        Text(text,
+            style: TextStyle(
+                fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
+        SizedBox(
+          width: 32,
+          child: Text(
+            '${value}',
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPriorityButtons(Flashcard currentCard) {
     return Row(
       children: [
@@ -123,25 +144,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
           constraints: const BoxConstraints(),
           padding: const EdgeInsets.symmetric(horizontal: 2),
         ),
-        Column(
-          children: [
-            const Text('Prio',
-                style: TextStyle(
-                    fontSize: 8, color: Colors.grey, fontWeight: FontWeight.bold)),
-            SizedBox(
-              width: 32,
-              child: Text(
-                '${currentCard.priority}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-
+        _buildTextWithInt("Prio", currentCard.priority),
         IconButton(
           icon: const Icon(Icons.add_circle_outline,
               color: Colors.indigo, size: 28),
@@ -158,11 +161,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
   Widget _buildAppBarStats(int numberOfCards, Flashcard currentCard) {
     return Row(
       children: [
-        Text('${numberOfCards}',
-            style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.grey)),
+        _buildTextWithInt("Cards", numberOfCards),
         const SizedBox(width: 12),
         _buildPriorityButtons(currentCard),
         const SizedBox(width: 12),

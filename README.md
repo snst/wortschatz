@@ -18,9 +18,11 @@
     - **Good**: Successful recall, moderate stability increase.
     - **Easy**: effortless recall, significant stability increase.
 - **Smart Review Scheduling**: Automatic scheduling based on the learning algorithm's parameters:
-    - Initial learning phase (10m, 1d, 3d intervals).
-    - Subsequent intervals based on stability and desired retention.
+    - Initial learning phase (10m, 1d, 3d intervals, adjusted by priority).
+    - Subsequent intervals based on stability, desired retention, and **card priority**.
+    - **Session Prioritization**: High-priority cards are automatically prioritized for review sessions.
 - **Flip Card Interface**: Tap cards to reveal answers; provide feedback with four distinct rating buttons.
+- **In-Session Priority Controls**: Adjust card priority (+/-) during learning to immediately influence how often a word appears. Priority 0 immediately skips the card.
 
 ### Multi-Language Support
 - **Configurable Language Pairs**: Set source/target languages (e.g., Spanish → German) via Settings.
@@ -37,7 +39,9 @@
     - **Front**: Primary content (usually source language word/phrase)
     - **Back**: Target content (usually translation/definition)
     - **Note**: Additional context or mnemonic hints
-    - **Priority**: Toggle to include/exclude cards from learning sessions.
+    - **Priority**: Variable priority (0-99) to adjust learning frequency.
+        - **Higher values**: Shorter review intervals (more frequent).
+        - **Value 0**: Card is excluded from learning and skipped if encountered.
     - **Stability / Difficulty**: Internal algorithm parameters.
 - **Bulk Operations**:
     - **JSON Import**: Paste JSON arrays directly.
@@ -94,7 +98,7 @@ lib/
 
 ### 4.3 Core Services (`lib/core/services/`)
 - **`DatabaseService`**: Handles all Drift operations, providing reactive streams for cards and reviewable items.
-- **`LearningController`**: The functional core implementing the FSRS-inspired algorithm logic.
+- **`LearningController`**: The functional core implementing the FSRS-inspired algorithm logic, now incorporating **priority-weighted interval scaling**.
 - **`TtsService`**: Wraps `flutter_tts` for multi-language speech synthesis.
 - **`ImportExportService`**: Manages JSON parsing and file system interactions for bulk operations.
 

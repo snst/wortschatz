@@ -21,7 +21,10 @@ class DatabaseService {
     return (_db.select(_db.flashcardsTable)
           ..where((t) => t.priority.isBiggerOrEqualValue(1))
           ..where((t) => t.nextReview.isSmallerOrEqualValue(DateTime.now()))
-          ..orderBy([(t) => OrderingTerm(expression: t.nextReview)]))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
+            (t) => OrderingTerm(expression: t.nextReview)
+          ]))
         .watch()
         .map((rows) => rows.map((row) => Flashcard.fromDrift(row)).toList());
   }
@@ -29,7 +32,10 @@ class DatabaseService {
   Stream<List<Flashcard>> get newCards {
     return (_db.select(_db.flashcardsTable)
           ..where((t) => t.priority.isBiggerOrEqualValue(1))
-          ..orderBy([(t) => OrderingTerm(expression: t.stability)]))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
+            (t) => OrderingTerm(expression: t.stability)
+          ]))
         .watch()
         .map((rows) => rows.map((row) => Flashcard.fromDrift(row)).toList());
   }

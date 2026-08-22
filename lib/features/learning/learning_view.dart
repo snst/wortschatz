@@ -21,6 +21,7 @@ class LearningView extends ConsumerStatefulWidget {
 
 class _LearningViewState extends ConsumerState<LearningView> {
   bool _showAnswer = false;
+  int? _lastCardId;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,13 @@ class _LearningViewState extends ConsumerState<LearningView> {
 
     final currentCard = learning.currentCard;
     if (currentCard == null) {
+      _lastCardId = null;
       return _buildEmptyState(context);
+    }
+
+    if (currentCard.id != _lastCardId) {
+      _showAnswer = false;
+      _lastCardId = currentCard.id;
     }
 
     return Scaffold(
@@ -61,6 +68,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
         },
         child: Column(
           children: [
+            _buildPriorityButtons(currentCard),
             Expanded(
                 child: _buildCardSide(learning, true)),
             const Divider(thickness: 1, indent: 48, endIndent: 48),
@@ -110,6 +118,36 @@ class _LearningViewState extends ConsumerState<LearningView> {
     );
   }
 
+  Widget _buildPriorityButtons(Flashcard currentCard) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline, color: Colors.orange),
+            onPressed: () => ref
+                .read(learningNotifierProvider.notifier)
+                .updatePriority(currentCard, -1),
+            tooltip: 'Decrease Priority',
+          ),
+          const Text('Adjust Priority',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.grey)),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, color: Colors.indigo),
+            onPressed: () => ref
+                .read(learningNotifierProvider.notifier)
+                .updatePriority(currentCard, 1),
+            tooltip: 'Increase Priority',
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppBarStats(Flashcard currentCard) {
     return Row(children: [
       Expanded(
@@ -125,12 +163,12 @@ class _LearningViewState extends ConsumerState<LearningView> {
               color: Colors.blue)),
       const SizedBox(width: 12),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Prio: ${currentCard.priority}',
+        Text('Priority: ${currentCard.priority}',
             style: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 11,
                 fontWeight: FontWeight.bold)),
-        Text("Rev: ${currentCard.reviewCount}",
+        Text("Reviews: ${currentCard.reviewCount}",
             style: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 11,

@@ -25,15 +25,17 @@ class LearningController {
     reviewCount++;
     
     DateTime nextReview;
+    final p = max(1, card.priority);
     if (reviewCount == 1) {
-      nextReview = now.add(const Duration(minutes: 10));
+      nextReview = now.add(Duration(minutes: (10 / p).round().clamp(1, 10)));
     } else if (reviewCount == 2) {
-      nextReview = now.add(const Duration(days: 1));
+      nextReview = now.add(Duration(hours: (24 / p).round().clamp(1, 24)));
     } else if (reviewCount == 3) {
-      nextReview = now.add(const Duration(days: 3));
+      nextReview = now.add(Duration(hours: (72 / p).round().clamp(1, 72)));
     } else {
       final interval = _calculateNextInterval(stability);
-      nextReview = now.add(Duration(days: interval));
+      final adjustedInterval = (interval / p).round().clamp(1, 36500);
+      nextReview = now.add(Duration(days: adjustedInterval));
     }
 
     return card.copyWith(

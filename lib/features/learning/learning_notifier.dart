@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/models/flashcard.dart';
@@ -105,6 +106,31 @@ class LearningNotifier extends Notifier<LearningState> {
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true);
     await _fetchNextBatch();
+  }
+
+  Future<void> updatePriority(Flashcard card, int delta) async {
+    final newPriority = (card.priority + delta).clamp(0, 99);
+    if (newPriority == card.priority) return;
+
+    final updatedCard = card.copyWith(priority: newPriority);
+    await ref.read(databaseServiceProvider).updateCard(updatedCard);
+
+    final newList = List<Flashcard>.from(state.sessionCards);
+    if (newPriority == 0) {
+      newList.removeWhere((c) => c.id == card.id);
+      if (newList.isEmpty) {
+        state = state.copyWith(sessionCards: newList, isLoading: true);
+        await _fetchNextBatch();
+      } else {
+        state = state.copyWith(sessionCards: newList);
+      }
+    } else {
+      final index = newList.indexWhere((c) => c.id == card.id);
+      if (index != -1) {
+        newList[index] = updatedCard;
+        state = state.copyWith(sessionCards: newList);
+      }
+    }
   }
 
   void speakCurrentCard(bool isQuestion, bool slow) {
